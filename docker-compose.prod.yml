@@ -1,0 +1,175 @@
+# Docker Compose para entorno de producción usando imágenes precompiladas del repositorio
+# Generado automáticamente por build-deploy.sh el jueves, 24 de abril de 2025, 01:47:17 CST
+services:
+  # Servicio principal
+  flecha-amarilla-core:
+    image: docker.io/walterfranco24/flecha-amarilla-core:v1.0.0
+    container_name: core-api
+    ports:
+      - "8082:8082"
+    environment:
+      - QUARKUS_HTTP_PORT=8082
+      - VALIDATOR_API_URL=http://validator-api:8083
+      - SIGNER_API_URL=http://signer-api:8084
+      - STAMP_API_URL=http://stamp-api:8085
+    networks:
+      - facturacion-network
+    depends_on:
+      - flecha-amarilla-validator
+      - flecha-amarilla-signer
+      - flecha-amarilla-stamp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Servicio de validación
+  flecha-amarilla-validator:
+    image: docker.io/walterfranco24/flecha-amarilla-validator:v1.0.0
+    container_name: validator-api
+    ports:
+      - "8083:8083"
+    environment:
+      - QUARKUS_HTTP_PORT=8083
+    networks:
+      - facturacion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Servicio de firmado
+  flecha-amarilla-signer:
+    image: docker.io/walterfranco24/flecha-amarilla-signer:v1.0.0
+    container_name: signer-api
+    ports:
+      - "8084:8084"
+    environment:
+      - QUARKUS_HTTP_PORT=8084
+    networks:
+      - facturacion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Servicio de timbrado
+  flecha-amarilla-stamp:
+    image: docker.io/walterfranco24/flecha-amarilla-stamp:v1.0.0
+    container_name: stamp-api
+    ports:
+      - "8085:8085"
+    environment:
+      - QUARKUS_HTTP_PORT=8085
+    networks:
+      - facturacion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Servicio de autenticación
+  flecha-amarilla-auth:
+    image: docker.io/walterfranco24/flecha-amarilla-auth:v1.0.0
+    container_name: auth-api
+    ports:
+      - "8086:8086"
+    environment:
+      - QUARKUS_HTTP_PORT=8086
+      - cliente-api/mp-rest/url=http://cliente-api:8087
+      - cliente-api/mp-rest/scope=jakarta.inject.Singleton
+      - cliente-api/mp-rest/connectTimeout=50000
+      - cliente-api/mp-rest/readTimeout=50000
+    networks:
+      - facturacion-network
+    depends_on:
+      - flecha-amarilla-cliente
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Servicio de cliente
+  flecha-amarilla-cliente:
+    image: docker.io/walterfranco24/flecha-amarilla-cliente:v1.0.0
+    container_name: cliente-api
+    ports:
+      - "8087:8087"
+    environment:
+      - QUARKUS_HTTP_PORT=8087
+      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:mysql://cliente-db:3306/cliente_db
+      - QUARKUS_DATASOURCE_USERNAME=cliente_user
+      - QUARKUS_DATASOURCE_PASSWORD=cliente_password
+      - QUARKUS_DATASOURCE_DB_KIND=mysql
+    networks:
+      - facturacion-network
+    depends_on:
+      cliente-db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Base de datos para clientes
+  cliente-db:
+    image: mysql:8.0
+    container_name: cliente-db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_USER=cliente_user
+      - MYSQL_PASSWORD=cliente_password
+      - MYSQL_ROOT_PASSWORD=secure_root_password
+      - MYSQL_DATABASE=cliente_db
+    volumes:
+      - cliente-db-data:/var/lib/mysql
+    networks:
+      - facturacion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-psecure_root_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  facturas-ducker-ui:
+    image: docker.io/walterfranco24/facturas-ducker-ui:v1.0.0
+    container_name: facturas-ducker-ui
+    ports:
+      - "4200:4200"
+    networks:
+      - facturacion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4200"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  facturacion-network:
+    driver: bridge
+
+volumes:
+  cliente-db-data:
+    driver: local
