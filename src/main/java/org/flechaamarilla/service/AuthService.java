@@ -73,7 +73,7 @@ public class AuthService {
             token,
             user.getEmail(),
             user.getName(),
-            "user" // Rol por defecto
+            "user" // Default rol
         );
     }
 }
