@@ -63,7 +63,7 @@ public class AuthResource {
     public Response getUserInfo(@Context SecurityContext securityContext) {
         String email = securityContext.getUserPrincipal().getName();
 
-        // El servicio de autenticación se encarga de buscar al usuario y manejar excepciones
+        //The authentication service is responsible for finding the user and handling exceptions
         return Response.ok(Map.of(
                 "email", email,
                 "auth", Map.of(
